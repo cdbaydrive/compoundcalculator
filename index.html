@@ -18,6 +18,9 @@
             width: 90%;
             max-width: 800px;
         }
+        #yearlyBreakdownTable.table-group {
+            max-width: 1000px; /* Increased max-width for Year-by-Year Breakdown table */
+        }
         .table-container {
             display: flex;
             justify-content: center;
@@ -138,6 +141,15 @@
             overflow: hidden;
             box-sizing: border-box;
         }
+        .nest-egg-start,
+        .yearly-addition,
+        .target-value,
+        .realized-input {
+            min-width: 120px; /* Increased min-width to prevent header wrapping */
+            white-space: nowrap;
+            text-align: right;
+            box-sizing: border-box;
+        }
         @media (max-width: 600px) {
             body {
                 padding: 10px;
@@ -194,6 +206,12 @@
                 width: 60px;
                 min-width: 60px;
                 max-width: 60px;
+            }
+            .nest-egg-start,
+            .yearly-addition,
+            .target-value,
+            .realized-input {
+                min-width: 80px; /* Smaller min-width for mobile */
             }
             #nestEggChart {
                 width: 100%;
@@ -594,8 +612,8 @@
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
+                    responsive: true;
+                    maintainAspectRatio: true;
                     scales: {
                         x: {
                             title: {
