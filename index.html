@@ -100,6 +100,16 @@
         .dropdown {
             cursor: pointer;
             user-select: none;
+            position: relative;
+        }
+        .dropdown::after {
+            content: '▼';
+            position: absolute;
+            right: 10px;
+            transition: transform 0.2s;
+        }
+        .dropdown.active::after {
+            transform: rotate(180deg);
         }
         .dropdown-content {
             display: none;
@@ -117,7 +127,6 @@
             max-height: 400px;
             display: block;
         }
-        /* Ensure percentage columns have fixed size */
         .target-percentage,
         .realized-percentage,
         .percentage-value {
@@ -129,7 +138,6 @@
             overflow: hidden;
             box-sizing: border-box;
         }
-        /* Mobile-friendly adjustments */
         @media (max-width: 600px) {
             body {
                 padding: 10px;
@@ -195,9 +203,7 @@
     </style>
 </head>
 <body>
-    <!-- Compound Interest Calculator Page -->
     <div id="compound" class="page active">
-        <!-- Title and Subtitle Table -->
         <table class="table-group">
             <tr>
                 <td colspan="13" class="title">Compound Interest Yield Calculator</td>
@@ -209,9 +215,7 @@
             </tr>
         </table>
 
-        <!-- Today and Retirement Sections -->
         <div class="table-container">
-            <!-- Today Table -->
             <table class="table-group">
                 <tr>
                     <td colspan="5" class="section-header">TODAY</td>
@@ -236,7 +240,6 @@
                 </tr>
             </table>
 
-            <!-- Retirement Table -->
             <table class="table-group">
                 <tr>
                     <td colspan="5" class="section-header">RETIREMENT</td>
@@ -262,7 +265,6 @@
             </table>
         </div>
 
-        <!-- Results Table -->
         <table class="table-group">
             <tr class="no-border">
                 <td colspan="3" class="no-border"></td>
@@ -276,10 +278,9 @@
             </tr>
         </table>
 
-        <!-- How to Use Table -->
         <table class="table-group">
             <tr>
-                <td colspan="13" class="section-header dropdown" onclick="toggleDropdown()">How to use ▼</td>
+                <td colspan="13" class="section-header dropdown" onclick="toggleDropdown()">How to use</td>
             </tr>
             <tbody id="howToUseContent" class="dropdown-content">
                 <tr>
@@ -300,7 +301,6 @@
             </tbody>
         </table>
 
-        <!-- Year-by-Year Breakdown Table -->
         <table id="yearlyBreakdownTable" class="table-group">
             <tr>
                 <td colspan="12" class="section-header">Year-by-Year Breakdown</td>
@@ -322,18 +322,17 @@
             <tbody id="yearlyBreakdown"></tbody>
         </table>
 
-        <!-- Nest-Egg Comparison Chart -->
         <canvas id="nestEggChart"></canvas>
     </div>
 
     <script>
-        // Dropdown toggle
         function toggleDropdown() {
             const content = document.getElementById('howToUseContent');
+            const header = document.querySelector('.dropdown');
             content.classList.toggle('active');
+            header.classList.toggle('active');
         }
 
-        // Compound Interest Calculator Logic
         const inputs = {
             nestEggNow: document.getElementById('nestEggNow'),
             nestEggRetirement: document.getElementById('nestEggRetirement'),
@@ -361,8 +360,7 @@
                     e.target.value = formatNumber(parseInt(value));
                 }
                 try {
-                    updateRealizedVsTarget();
-                    requestAnimationFrame(updateChart);
+                    updateCalculation(); // Trigger full recalculation
                 } catch (err) {
                     console.error('Error in formatFinancialInput:', err);
                 }
@@ -372,8 +370,7 @@
                     e.target.value = "";
                 }
                 try {
-                    updateRealizedVsTarget();
-                    requestAnimationFrame(updateChart);
+                    updateCalculation();
                 } catch (err) {
                     console.error('Error in formatFinancialInput blur:', err);
                 }
@@ -402,12 +399,11 @@
 
             let low = 0;
             let high = 1;
-            let mid;
             const precision = 0.0001;
             let maxIterations = 100;
 
             while (maxIterations-- > 0) {
-                mid = (low + high) / 2;
+                const mid = (low + high) / 2;
                 const result = calculateFutureValue(principal, mid, years, addition);
 
                 if (Math.abs(result - target) < precision) {
@@ -419,11 +415,14 @@
                     high = mid;
                 }
             }
-            return mid;
+            return (low + high) / 2;
         }
 
         function updateRealizedVsTarget() {
             const rows = yearlyBreakdown.querySelectorAll('tr');
+            if (rows.length === 0) {
+                return; // Exit if table is empty
+            }
             const initialNestEgg = parseFormattedNumber(inputs.nestEggNow.value);
 
             rows.forEach((row, index) => {
@@ -431,6 +430,10 @@
                 const realizedCell = row.querySelector('.realized-input input');
                 const percentageCell = row.querySelector('.percentage-value');
                 const realizedPercentageCell = row.querySelector('.realized-percentage');
+
+                if (!targetCell || !realizedCell || !percentageCell || !realizedPercentageCell) {
+                    return; // Skip if cells are missing
+                }
 
                 const targetValue = parseFormattedNumber(targetCell.textContent);
                 const realizedValue = parseFormattedNumber(realizedCell.value);
@@ -450,7 +453,6 @@
                     realizedPercentageCell.textContent = "";
                 } else {
                     if (index === 0) {
-                        // Year 1: (Realized / Start) - 1
                         if (initialNestEgg !== 0) {
                             const realizedPercentage = ((realizedValue / initialNestEgg) - 1) * 100;
                             realizedPercentageCell.textContent = realizedPercentage.toFixed(2) + " %";
@@ -458,9 +460,8 @@
                             realizedPercentageCell.textContent = "";
                         }
                     } else {
-                        // Year 2+: (Prev Realized / Current Realized) - 1
                         const prevRow = rows[index - 1];
-                        const prevRealized = parseFormattedNumber(prevRow.querySelector('.realized-nest-egg').value) || 0;
+                        const prevRealized = prevRow ? parseFormattedNumber(prevRow.querySelector('.realized-nest-egg')?.value) || 0 : 0;
                         if (prevRealized !== 0) {
                             const realizedPercentage = ((prevRealized / realizedValue) - 1) * 100;
                             realizedPercentageCell.textContent = realizedPercentage.toFixed(2) + " %";
@@ -479,7 +480,7 @@
             const years = endAge - startAge;
             let currentNestEgg = parseFormattedNumber(inputs.nestEggNow.value);
             const addition = parseFormattedNumber(inputs.yearlyAddition.value);
-            const fixedRate = 0.2452; // 24.52%
+            const fixedRate = 0.2452;
 
             if (years <= 0) {
                 return;
@@ -508,10 +509,9 @@
                 currentNestEgg = nestEggTarget;
             }
 
-            // Apply formatting to all realized inputs
             document.querySelectorAll('.realized-nest-egg').forEach(formatFinancialInput);
             updateRealizedVsTarget();
-            requestAnimationFrame(updateChart);
+            updateChart();
         }
 
         function updateChart() {
@@ -524,7 +524,7 @@
                 return;
             }
 
-            const years = parseInt(inputs.ageRetirement.value) - parseInt(inputs.ageNow.value);
+            const years = parseInt(inputs.ageRetirement.value) || 0 - parseInt(inputs.ageNow.value) || 0;
             if (years <= 0 || yearlyBreakdown.children.length === 0) {
                 if (nestEggChart) {
                     nestEggChart.destroy();
@@ -539,8 +539,10 @@
             const rows = yearlyBreakdown.querySelectorAll('tr');
 
             rows.forEach(row => {
-                const targetValue = parseFormattedNumber(row.querySelector('.target-value').textContent) || 0;
-                const realizedValue = parseFormattedNumber(row.querySelector('.realized-nest-egg').value) || null;
+                const targetCell = row.querySelector('.target-value');
+                const realizedCell = row.querySelector('.realized-nest-egg');
+                const targetValue = targetCell ? parseFormattedNumber(targetCell.textContent) || 0 : 0;
+                const realizedValue = realizedCell ? parseFormattedNumber(realizedCell.value) || null : null;
                 targetData.push(targetValue);
                 realizedData.push(realizedValue);
             });
@@ -577,8 +579,8 @@
                         ]
                     },
                     options: {
-                        responsive: true;
-                        maintainAspectRatio: true;
+                        responsive: true,
+                        maintainAspectRatio: true,
                         scales: {
                             x: {
                                 title: {
@@ -665,44 +667,17 @@
 
         function updateCalculation() {
             try {
-                const years = parseInt(inputs.ageRetirement.value) - parseInt(inputs.ageNow.value);
+                const ageNow = parseInt(inputs.ageNow.value) || 0;
+                const ageRetirement = parseInt(inputs.ageRetirement.value) || 0;
+                const years = ageRetirement - ageNow;
                 yearsToCompound.textContent = years > 0 ? years : 0;
 
-                if (years > 0 && 
-                    inputs.nestEggNow.value && 
-                    inputs.nestEggRetirement.value && 
-                    inputs.yearlyAddition.value) {
+                const nestEggNow = parseFormattedNumber(inputs.nestEggNow.value);
+                const nestEggRetirement = parseFormattedNumber(inputs.nestEggRetirement.value);
+                const yearlyAddition = parseFormattedNumber(inputs.yearlyAddition.value);
+
+                if (years > 0 && nestEggNow > 0 && nestEggRetirement > 0 && yearlyAddition >= 0) {
                     const rate = findInterestRate();
                     interestRate.textContent = (rate * 100).toFixed(2) + " %";
                     updateYearlyBreakdown();
                 } else {
-                    interestRate.textContent = 'N/A';
-                    yearlyBreakdown.innerHTML = '';
-                    if (nestEggChart) {
-                        nestEggChart.destroy();
-                        nestEggChart = null;
-                    }
-                }
-            } catch (err) {
-                console.error('Error in updateCalculation:', err);
-                interestRate.textContent = 'N/A';
-                yearlyBreakdown.innerHTML = '';
-            }
-        }
-
-        Object.values(inputs).forEach(input => {
-            input.addEventListener('input', updateCalculation);
-        });
-
-        // Initial calculation
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                updateCalculation();
-                requestAnimationFrame(updateChart);
-            } catch (err) {
-                console.error('Error in DOMContentLoaded:', err);
-            }
-        });
-    </script>
-</body>
-</html>
