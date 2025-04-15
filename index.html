@@ -176,10 +176,10 @@
         <!-- Title and Subtitle Table -->
         <table class="table-group">
             <tr>
-                <td colspan="11" class="title">Compound Interest Yield Calculator</td>
+                <td colspan="13" class="title">Compound Interest Yield Calculator</td>
             </tr>
             <tr>
-                <td colspan="11" class="subtitle">
+                <td colspan="13" class="subtitle">
                     Know the yearly interest rate needed to grow your current nest-egg to your retirement goal
                 </td>
             </tr>
@@ -255,23 +255,23 @@
         <!-- How to Use Table -->
         <table class="table-group">
             <tr>
-                <td colspan="11" class="section-header dropdown" onclick="toggleDropdown()">How to use ▼</td>
+                <td colspan="13" class="section-header dropdown" onclick="toggleDropdown()">How to use ▼</td>
             </tr>
             <tbody id="howToUseContent" class="dropdown-content">
                 <tr>
-                    <td colspan="11">Only adjust the cells highlighted in blue</td>
+                    <td colspan="13">Only adjust the cells highlighted in blue</td>
                 </tr>
                 <tr>
-                    <td colspan="11">[1] Input your current nest-egg value</td>
+                    <td colspan="13">[1] Input your current nest-egg value</td>
                 </tr>
                 <tr>
-                    <td colspan="11">[2] Input your age now</td>
+                    <td colspan="13">[2] Input your age now</td>
                 </tr>
                 <tr>
-                    <td colspan="11">[3] Input your committed yearly addition</td>
+                    <td colspan="13">[3] Input your committed yearly addition</td>
                 </tr>
                 <tr>
-                    <td colspan="11">[4] Input your retirement nest-egg goal</td>
+                    <td colspan="13">[4] Input your retirement nest-egg goal</td>
                 </tr>
             </tbody>
         </table>
@@ -279,7 +279,7 @@
         <!-- Year-by-Year Breakdown Table -->
         <table id="yearlyBreakdownTable" class="table-group">
             <tr>
-                <td colspan="10" class="section-header">Year-by-Year Breakdown</td>
+                <td colspan="12" class="section-header">Year-by-Year Breakdown</td>
                 <td class="section-header" style="text-align: right;">
                     <button class="download-button" onclick="downloadCSV()">Download</button>
                 </td>
@@ -290,7 +290,9 @@
                 <td colspan="2">Nest-Egg Start</td>
                 <td colspan="2">Yearly Addition</td>
                 <td colspan="1">Nest-Egg Target</td>
+                <td colspan="1">% Target</td>
                 <td colspan="1">Nest-Egg Realized</td>
+                <td colspan="1">% Realized</td>
                 <td colspan="1">Realized vs Target (%)</td>
             </tr>
             <tbody id="yearlyBreakdown"></tbody>
@@ -389,19 +391,30 @@
             const targetCell = row.querySelector('.target-value');
             const realizedCell = row.querySelector('.realized-input input');
             const percentageCell = row.querySelector('.percentage-value');
+            const realizedPercentageCell = row.querySelector('.realized-percentage');
 
+            const nestEggStart = parseFormattedNumber(row.querySelector('.nest-egg-start').textContent) || 0;
+            const yearlyAddition = parseFormattedNumber(row.querySelector('.yearly-addition').textContent) || 0;
             const targetValue = parseFormattedNumber(targetCell.textContent) || 0;
             const realizedValue = parseFormattedNumber(realizedCell.value) || 0;
 
+            // Update Realized vs Target (%)
             if (targetValue === 0) {
                 percentageCell.textContent = "";
                 percentageCell.classList.remove('positive');
-                return;
+            } else {
+                const percentage = ((realizedValue - targetValue) / targetValue) * 100;
+                percentageCell.textContent = percentage.toFixed(2) + " %";
+                percentageCell.classList.toggle('positive', realizedValue >= targetValue);
             }
 
-            const percentage = ((realizedValue - targetValue) / targetValue) * 100;
-            percentageCell.textContent = percentage.toFixed(2) + " %";
-            percentageCell.classList.toggle('positive', realizedValue >= targetValue);
+            // Update % Realized
+            if (nestEggStart === 0 || realizedValue === 0) {
+                realizedPercentageCell.textContent = "";
+            } else {
+                const realizedPercentage = ((realizedValue - yearlyAddition - nestEggStart) / nestEggStart) * 100;
+                realizedPercentageCell.textContent = realizedPercentage.toFixed(2) + " %";
+            }
         }
 
         function updateYearlyBreakdown(rate) {
@@ -418,14 +431,17 @@
                 const age = startAge + i;
                 const nestEggStart = currentNestEgg;
                 const nestEggTarget = nestEggStart * (1 + rate) + addition;
+                const targetPercentage = nestEggStart ? ((nestEggTarget - addition - nestEggStart) / nestEggStart) * 100 : 0;
 
                 row.innerHTML = `
                     <td colspan="2">${year}</td>
                     <td colspan="2">${age}</td>
-                    <td colspan="2">${formatNumber(nestEggStart)}</td>
-                    <td colspan="2">${formatNumber(addition)}</td>
+                    <td colspan="2" class="nest-egg-start">${formatNumber(nestEggStart)}</td>
+                    <td colspan="2" class="yearly-addition">${formatNumber(addition)}</td>
                     <td colspan="1" class="target-value">${formatNumber(nestEggTarget)}</td>
+                    <td colspan="1" class="target-percentage">${targetPercentage.toFixed(2)} %</td>
                     <td colspan="1" class="realized-input"><input type="text" class="realized-nest-egg" value=""></td>
+                    <td colspan="1" class="realized-percentage"></td>
                     <td colspan="1" class="percentage-value"></td>
                 `;
                 yearlyBreakdown.appendChild(row);
@@ -539,7 +555,7 @@
             const addition = parseFormattedNumber(inputs.yearlyAddition.value);
             const rate = findInterestRate();
 
-            let csvContent = "Year,Age,Nest-Egg Start,Yearly Addition,Nest-Egg Target,Nest-Egg Realized,Realized vs Target (%)\n";
+            let csvContent = "Year,Age,Nest-Egg Start,Yearly Addition,Nest-Egg Target,% Target,Nest-Egg Realized,% Realized,Realized vs Target (%)\n";
             const rows = yearlyBreakdown.querySelectorAll('tr');
 
             for (let i = 0; i < years; i++) {
@@ -547,11 +563,13 @@
                 const age = startAge + i;
                 const nestEggStart = currentNestEgg;
                 const nestEggTarget = nestEggStart * (1 + rate) + addition;
+                const targetPercentage = nestEggStart ? ((nestEggTarget - addition - nestEggStart) / nestEggStart) * 100 : 0;
                 const realizedInput = rows[i].querySelector('.realized-nest-egg').value;
                 const realizedValue = realizedInput ? parseFormattedNumber(realizedInput) : '';
+                const realizedPercentage = (realizedValue && nestEggStart) ? ((realizedValue - addition - nestEggStart) / nestEggStart) * 100 : '';
                 const percentage = realizedValue && nestEggTarget ? (((realizedValue - nestEggTarget) / nestEggTarget) * 100).toFixed(2) : '';
 
-                csvContent += `${year},${age},${nestEggStart},${addition},${nestEggTarget},${realizedValue},${percentage}\n`;
+                csvContent += `${year},${age},${nestEggStart},${addition},${nestEggTarget},${targetPercentage.toFixed(2)},${realizedValue},${realizedPercentage ? realizedPercentage.toFixed(2) : ''},${percentage}\n`;
                 currentNestEgg = nestEggTarget;
             }
 
