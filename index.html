@@ -112,17 +112,18 @@
             position: relative;
             display: inline-block;
             width: 200px; /* Control width for alignment */
+            padding-left: 20px; /* Space for arrow */
         }
-        .dropdown::after {
+        .dropdown::before {
             content: '▼';
             position: absolute;
-            right: 10px; /* Closer to text */
+            left: 0; /* Before text */
             top: 50%;
             transform: translateY(-50%);
             transition: transform 0.2s;
         }
-        .dropdown.active::after {
-            transform: translateY(-50%) rotate(180deg);
+        .dropdown.active::before {
+            transform: translateY(-50%) rotate(180deg); /* Rotate upward when active */
         }
         .dropdown-content {
             display: none;
@@ -144,9 +145,9 @@
         .target-percentage,
         .realized-percentage,
         .percentage-value {
-            width: 80px;
-            min-width: 80px;
-            max-width: 80px;
+            width: 100px; /* Increased for longer headers */
+            min-width: 100px;
+            max-width: 100px;
             white-space: nowrap;
             text-align: right;
             overflow: hidden;
@@ -156,7 +157,9 @@
         .yearly-addition,
         .target-value,
         .realized-input {
-            min-width: 120px; /* Increased min-width to prevent header wrapping */
+            width: 100px; /* Reduced to balance space */
+            min-width: 100px;
+            max-width: 100px;
             white-space: nowrap;
             text-align: right;
             box-sizing: border-box;
@@ -213,16 +216,14 @@
             }
             .target-percentage,
             .realized-percentage,
-            .percentage-value {
-                width: 60px;
-                min-width: 60px;
-                max-width: 60px;
-            }
+            .percentage-value,
             .nest-egg-start,
             .yearly-addition,
             .target-value,
             .realized-input {
-                min-width: 80px; /* Smaller min-width for mobile */
+                width: 70px; /* Reduced for mobile */
+                min-width: 70px;
+                max-width: 70px;
             }
             #nestEggChart {
                 width: 100%;
@@ -362,7 +363,7 @@
             if (content && header) {
                 content.classList.toggle('active');
                 header.classList.toggle('active');
-                console.log('Dropdown toggled'); // Debug
+                console.log('Dropdown toggled');
             } else {
                 console.error('Dropdown content or header not found');
             }
@@ -464,7 +465,7 @@
         }
 
         function updateRealizedVsTarget() {
-            console.log('Updating Realized vs Target'); // Debug
+            console.log('Updating Realized vs Target');
             const rows = yearlyBreakdown.querySelectorAll('tr');
             if (rows.length === 0) return;
 
@@ -515,7 +516,7 @@
         }
 
         function updateYearlyBreakdown() {
-            console.log('Updating Yearly Breakdown'); // Debug
+            console.log('Updating Yearly Breakdown');
             const oldRows = yearlyBreakdown.querySelectorAll('tr');
             oldRows.forEach((row, index) => {
                 const realizedInput = row.querySelector('.realized-nest-egg');
@@ -567,7 +568,7 @@
         }
 
         function updateChart() {
-            console.log('Updating Chart'); // Debug
+            console.log('Updating Chart');
             const canvas = document.getElementById('nestEggChart');
             if (!canvas) {
                 console.error('Canvas not found');
@@ -670,7 +671,7 @@
         }
 
         function downloadCSV() {
-            console.log('Downloading CSV'); // Debug
+            console.log('Downloading CSV');
             try {
                 const startAge = parseInt(inputs.ageNow.value) || 0;
                 const endAge = parseInt(inputs.ageRetirement.value) || 0;
@@ -726,7 +727,7 @@
         }
 
         function updateCalculation() {
-            console.log('Updating Calculation'); // Debug
+            console.log('Updating Calculation');
             const ageNow = parseInt(inputs.ageNow.value) || 0;
             const ageRetirement = parseInt(inputs.ageRetirement.value) || 0;
             const years = ageRetirement - ageNow;
