@@ -19,13 +19,13 @@
             max-width: 800px;
         }
         #yearlyBreakdownTable.table-group {
-            max-width: 1000px; /* Increased max-width for Year-by-Year Breakdown table */
+            max-width: 1000px;
             display: table;
-            visibility: visible; /* Ensure visibility */
+            visibility: visible;
             overflow: visible;
         }
         #yearlyBreakdownTable tbody {
-            display: table-row-group; /* Ensure tbody is visible */
+            display: table-row-group;
         }
         .table-container {
             display: flex;
@@ -66,17 +66,6 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-        .realized-input input {
-            background-color: #fff3e6;
-            border: 1px solid #999;
-            padding: 6px;
-            width: 100px;
-            max-width: 100px;
-            text-align: right;
-            font-size: 14px;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
         .section-header {
             font-weight: bold;
             background-color: #f5f5f5;
@@ -111,25 +100,25 @@
             user-select: none;
             position: relative;
             display: inline-block;
-            width: 200px; /* Control width for alignment */
-            padding-left: 20px; /* Space for arrow */
+            width: 200px;
+            padding-left: 20px;
         }
         .dropdown::before {
             content: '▼';
             position: absolute;
-            left: 0; /* Before text */
+            left: 0;
             top: 50%;
             transform: translateY(-50%);
             transition: transform 0.2s;
         }
         .dropdown.active::before {
-            transform: translateY(-50%) rotate(180deg); /* Rotate upward when active */
+            transform: translateY(-50%) rotate(180deg);
         }
         .dropdown-content {
             display: none;
         }
         .dropdown-content.active {
-            display: table-row-group; /* For table rows */
+            display: table-row-group;
         }
         .positive {
             color: #28a745;
@@ -140,26 +129,88 @@
             max-width: 800px;
             max-height: 400px;
             display: block;
-            visibility: visible; /* Ensure visibility */
+            visibility: visible;
         }
-        .target-percentage,
-        .realized-percentage,
-        .percentage-value {
-            width: 100px; /* Increased for longer headers */
-            min-width: 100px;
-            max-width: 100px;
+        /* Column-specific widths */
+        .year-col {
+            width: 24px; /* 48px / 2 for colspan=2 */
+            min-width: 24px;
+            max-width: 24px;
             white-space: nowrap;
-            text-align: right;
-            overflow: hidden;
+            text-align: center;
             box-sizing: border-box;
         }
-        .nest-egg-start,
-        .yearly-addition,
-        .target-value,
+        .age-col {
+            width: 21px; /* 41px / 2 */
+            min-width: 21px;
+            max-width: 21px;
+            white-space: nowrap;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .nest-egg-start-col {
+            width: 59px; /* 118px / 2 */
+            min-width: 59px;
+            max-width: 59px;
+            white-space: nowrap;
+            text-align: right;
+            box-sizing: border-box;
+        }
+        .yearly-addition-col {
+            width: 63px; /* 125px / 2 */
+            min-width: 63px;
+            max-width: 63px;
+            white-space: nowrap;
+            text-align: right;
+            box-sizing: border-box;
+        }
+        .target-value {
+            width: 125px;
+            min-width: 125px;
+            max-width: 125px;
+            white-space: nowrap;
+            text-align: right;
+            box-sizing: border-box;
+        }
+        .target-percentage {
+            width: 76px;
+            min-width: 76px;
+            max-width: 76px;
+            white-space: nowrap;
+            text-align: right;
+            box-sizing: border-box;
+        }
         .realized-input {
-            width: 100px; /* Reduced to balance space */
-            min-width: 100px;
-            max-width: 100px;
+            width: 139px;
+            min-width: 139px;
+            max-width: 139px;
+            white-space: nowrap;
+            text-align: right;
+            box-sizing: border-box;
+        }
+        .realized-input input {
+            background-color: #fff3e6;
+            border: 1px solid #999;
+            padding: 6px;
+            width: 125px; /* 139px - 14px (padding) */
+            max-width: 125px;
+            text-align: right;
+            font-size: 14px;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .realized-percentage {
+            width: 90px;
+            min-width: 90px;
+            max-width: 90px;
+            white-space: nowrap;
+            text-align: right;
+            box-sizing: border-box;
+        }
+        .percentage-value {
+            width: 174px;
+            min-width: 174px;
+            max-width: 174px;
             white-space: nowrap;
             text-align: right;
             box-sizing: border-box;
@@ -182,9 +233,15 @@
             td {
                 padding: 6px;
             }
-            .highlight input, .realized-input input {
+            .highlight input {
                 width: 80px;
                 max-width: 80px;
+                font-size: 12px;
+                padding: 5px;
+            }
+            .realized-input input {
+                width: 90px; /* Reduced for mobile */
+                max-width: 90px;
                 font-size: 12px;
                 padding: 5px;
             }
@@ -214,16 +271,50 @@
                 overflow-x: auto;
                 white-space: nowrap;
             }
-            .target-percentage,
-            .realized-percentage,
-            .percentage-value,
-            .nest-egg-start,
-            .yearly-addition,
-            .target-value,
+            .year-col {
+                width: 17px; /* 48px * 0.7 / 2 */
+                min-width: 17px;
+                max-width: 17px;
+            }
+            .age-col {
+                width: 15px; /* 41px * 0.7 / 2 */
+                min-width: 15px;
+                max-width: 15px;
+            }
+            .nest-egg-start-col {
+                width: 41px; /* 118px * 0.7 / 2 */
+                min-width: 41px;
+                max-width: 41px;
+            }
+            .yearly-addition-col {
+                width: 44px; /* 125px * 0.7 / 2 */
+                min-width: 44px;
+                max-width: 44px;
+            }
+            .target-value {
+                width: 88px; /* 125px * 0.7 */
+                min-width: 88px;
+                max-width: 88px;
+            }
+            .target-percentage {
+                width: 53px; /* 76px * 0.7 */
+                min-width: 53px;
+                max-width: 53px;
+            }
             .realized-input {
-                width: 70px; /* Reduced for mobile */
-                min-width: 70px;
-                max-width: 70px;
+                width: 97px; /* 139px * 0.7 */
+                min-width: 97px;
+                max-width: 97px;
+            }
+            .realized-percentage {
+                width: 63px; /* 90px * 0.7 */
+                min-width: 63px;
+                max-width: 63px;
+            }
+            .percentage-value {
+                width: 122px; /* 174px * 0.7 */
+                min-width: 122px;
+                max-width: 122px;
             }
             #nestEggChart {
                 width: 100%;
@@ -340,15 +431,19 @@
                 </td>
             </tr>
             <tr>
-                <td colspan="2">Year</td>
-                <td colspan="2">Age</td>
-                <td colspan="2">Nest-Egg Start</td>
-                <td colspan="2">Yearly Addition</td>
-                <td colspan="1">Nest-Egg Target</td>
-                <td colspan="1">% Target</td>
-                <td colspan="1">Nest-Egg Realized</td>
-                <td colspan="1">% Realized</td>
-                <td colspan="1">Realized vs Target (%)</td>
+                <td class="year-col"></td>
+                <td class="year-col">Year</td>
+                <td class="age-col"></td>
+                <td class="age-col">Age</td>
+                <td class="nest-egg-start-col"></td>
+                <td class="nest-egg-start-col">Nest-Egg Start</td>
+                <td class="yearly-addition-col"></td>
+                <td class="yearly-addition-col">Yearly Addition</td>
+                <td class="target-value">Nest-Egg Target</td>
+                <td class="target-percentage">% Target</td>
+                <td class="realized-input">Nest-Egg Realized</td>
+                <td class="realized-percentage">% Realized</td>
+                <td class="percentage-value">Realized vs Target (%)</td>
             </tr>
             <tbody id="yearlyBreakdown"></tbody>
         </table>
@@ -548,15 +643,19 @@
                 const realizedValue = realizedValues[i] || "";
 
                 row.innerHTML = `
-                    <td colspan="2">${year}</td>
-                    <td colspan="2">${age}</td>
-                    <td colspan="2" class="nest-egg-start">${formatNumber(nestEggStart)}</td>
-                    <td colspan="2" class="yearly-addition">${formatNumber(addition)}</td>
-                    <td colspan="1" class="target-value">${formatNumber(nestEggTarget)}</td>
-                    <td colspan="1" class="target-percentage">${targetPercentage.toFixed(2)} %</td>
-                    <td colspan="1" class="realized-input"><input type="text" class="realized-nest-egg" value="${realizedValue}"></td>
-                    <td colspan="1" class="realized-percentage"></td>
-                    <td colspan="1" class="percentage-value"></td>
+                    <td class="year-col"></td>
+                    <td class="year-col">${year}</td>
+                    <td class="age-col"></td>
+                    <td class="age-col">${age}</td>
+                    <td class="nest-egg-start-col"></td>
+                    <td class="nest-egg-start-col">${formatNumber(nestEggStart)}</td>
+                    <td class="yearly-addition-col"></td>
+                    <td class="yearly-addition-col">${formatNumber(addition)}</td>
+                    <td class="target-value">${formatNumber(nestEggTarget)}</td>
+                    <td class="target-percentage">${targetPercentage.toFixed(2)} %</td>
+                    <td class="realized-input"><input type="text" class="realized-nest-egg" value="${realizedValue}"></td>
+                    <td class="realized-percentage"></td>
+                    <td class="percentage-value"></td>
                 `;
                 yearlyBreakdown.appendChild(row);
                 currentNestEgg = nestEggTarget;
