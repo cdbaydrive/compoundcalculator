@@ -3,47 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Calculators</title>
+    <title>Compound Interest Yield Calculator</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 20px;
-        }
-        .page {
-            display: none;
-        }
-        .page.active {
-            display: block;
-        }
-        .welcome {
-            text-align: center;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .welcome button {
-            padding: 10px 20px;
-            margin: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #0066cc;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        .welcome button:hover {
-            background-color: #0052a3;
+            padding: 15px;
+            box-sizing: border-box;
         }
         .table-group {
             border-collapse: collapse;
-            margin: 40px auto;
-            width: 80%;
+            margin: 20px auto;
+            width: 90%;
+            max-width: 800px;
         }
         .table-container {
             display: flex;
             justify-content: center;
             gap: 20px;
+            flex-wrap: wrap;
         }
         table {
             border-collapse: collapse;
@@ -52,11 +31,12 @@
         td {
             padding: 8px;
             border: 1px solid #ddd;
+            font-size: 14px;
         }
         .title {
             text-align: center;
             font-weight: bold;
-            font-size: 1.2em;
+            font-size: 1.4em;
             padding: 15px;
             border: none;
         }
@@ -64,24 +44,30 @@
             text-align: center;
             padding: 10px;
             border: none;
+            font-size: 1em;
         }
         .highlight input {
             background-color: #e6f3ff;
             border: 1px solid #999;
-            padding: 4px;
+            padding: 6px;
             width: 100px;
             text-align: right;
+            font-size: 14px;
+            border-radius: 4px;
         }
         .realized-input input {
             background-color: #fff3e6;
             border: 1px solid #999;
-            padding: 4px;
+            padding: 6px;
             width: 100px;
             text-align: right;
+            font-size: 14px;
+            border-radius: 4px;
         }
         .section-header {
             font-weight: bold;
             background-color: #f5f5f5;
+            font-size: 1.1em;
         }
         .result {
             font-weight: bold;
@@ -91,20 +77,6 @@
         }
         .no-border {
             border: none;
-        }
-        .back-button {
-            padding: 12px 24px;
-            margin: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #ff6200;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .back-button:hover {
-            background-color: #e65c00;
         }
         .download-button {
             padding: 10px 20px;
@@ -116,6 +88,7 @@
             border-radius: 5px;
             font-weight: bold;
             float: right;
+            touch-action: manipulation;
         }
         .download-button:hover {
             background-color: #218838;
@@ -131,29 +104,75 @@
             display: table-row-group;
         }
         .positive {
-            color: #28a745; /* Green for positive percentages */
+            color: #28a745;
         }
         #nestEggChart {
-            margin: 40px auto;
-            width: 80%;
+            margin: 20px auto;
+            width: 90%;
+            max-width: 800px;
             max-height: 400px;
-            display: block; /* Ensure canvas is visible */
+            display: block;
+        }
+        /* Mobile-friendly adjustments */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .table-group {
+                width: 100%;
+                margin: 10px auto;
+            }
+            .table-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            table {
+                font-size: 12px;
+            }
+            td {
+                padding: 6px;
+            }
+            .highlight input, .realized-input input {
+                width: 80px;
+                font-size: 12px;
+                padding: 5px;
+            }
+            .title {
+                font-size: 1.2em;
+                padding: 10px;
+            }
+            .subtitle {
+                font-size: 0.9em;
+            }
+            .section-header {
+                font-size: 1em;
+            }
+            .result {
+                font-size: 1.2em;
+                padding: 8px;
+            }
+            .download-button {
+                padding: 8px 16px;
+                font-size: 12px;
+                width: 100%;
+                float: none;
+                margin-top: 10px;
+            }
+            #yearlyBreakdownTable {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            #nestEggChart {
+                width: 100%;
+                max-height: 300px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Welcome Page -->
-    <div id="welcome" class="page active">
-        <div class="welcome">
-            <h1>Welcome to Financial Calculators</h1>
-            <p>Please select a calculator to begin:</p>
-            <button onclick="showPage('compound')">Compound Interest Calculator</button>
-            <button onclick="showPage('mortgage')">Mortgage Snowball Comparator</button>
-        </div>
-    </div>
-
     <!-- Compound Interest Calculator Page -->
-    <div id="compound" class="page">
+    <div id="compound" class="page active">
         <!-- Title and Subtitle Table -->
         <table class="table-group">
             <tr>
@@ -161,13 +180,12 @@
             </tr>
             <tr>
                 <td colspan="11" class="subtitle">
-                    know the yearly interest rate needed to bring your current nest-egg 
-                    to the size of your retirement nest-egg
+                    Know the yearly interest rate needed to grow your current nest-egg to your retirement goal
                 </td>
             </tr>
         </table>
 
-        <!-- Today and Retirement Tables Side by Side -->
+        <!-- Today and Retirement Sections -->
         <div class="table-container">
             <!-- Today Table -->
             <table class="table-group">
@@ -175,7 +193,7 @@
                     <td colspan="5" class="section-header">TODAY</td>
                 </tr>
                 <tr>
-                    <td colspan="2">the money available for investment today</td>
+                    <td colspan="2">Money available today</td>
                     <td>Nest-Egg Now</td>
                     <td class="highlight"><input type="text" id="nestEggNow" value="150,000"></td>
                     <td>[1]</td>
@@ -187,7 +205,7 @@
                     <td>[2]</td>
                 </tr>
                 <tr>
-                    <td colspan="2">the money you can add each year till you retire</td>
+                    <td colspan="2">Annual contribution</td>
                     <td>Yearly Addition ($)</td>
                     <td class="highlight"><input type="text" id="yearlyAddition" value="6,000"></td>
                     <td>[3]</td>
@@ -200,13 +218,13 @@
                     <td colspan="5" class="section-header">RETIREMENT</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Nest-Egg at Retirement</td>
+                    <td colspan="2">Nest-Egg Goal</td>
                     <td class="highlight"><input type="text" id="nestEggRetirement" value="2,400,000"></td>
                     <td>[4]</td>
-                    <td>the amount of money you need when you retire</td>
+                    <td>Your retirement target</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Your Age at Retirement</td>
+                    <td colspan="2">Retirement Age</td>
                     <td class="highlight"><input type="number" id="ageRetirement" value="55" step="1"></td>
                     <td></td>
                     <td></td>
@@ -225,7 +243,7 @@
             <tr class="no-border">
                 <td colspan="3" class="no-border"></td>
                 <td id="interestRate" class="result no-border">24.52 %</td>
-                <td colspan="3" class="result no-border">the yearly interest rate needed to reach your targeted nest-egg</td>
+                <td colspan="3" class="result no-border">Yearly interest rate needed</td>
             </tr>
             <tr class="no-border">
                 <td colspan="3" class="no-border"></td>
@@ -253,13 +271,13 @@
                     <td colspan="11">[3] Input your committed yearly addition</td>
                 </tr>
                 <tr>
-                    <td colspan="11">[4] Input the age you want to retire</td>
+                    <td colspan="11">[4] Input your retirement nest-egg goal</td>
                 </tr>
             </tbody>
         </table>
 
         <!-- Year-by-Year Breakdown Table -->
-        <table class="table-group">
+        <table id="yearlyBreakdownTable" class="table-group">
             <tr>
                 <td colspan="10" class="section-header">Year-by-Year Breakdown</td>
                 <td class="section-header" style="text-align: right;">
@@ -280,46 +298,9 @@
 
         <!-- Nest-Egg Comparison Chart -->
         <canvas id="nestEggChart"></canvas>
-
-        <!-- Back Button Table -->
-        <div class="table-group" style="text-align: center;">
-            <button class="back-button" onclick="showPage('welcome')">← Back to Welcome</button>
-        </div>
-    </div>
-
-    <!-- Mortgage Snowball Comparator Page (Placeholder) -->
-    <div id="mortgage" class="page">
-        <h1 style="text-align: center;">Mortgage Snowball Comparator</h1>
-        <p style="text-align: center;">This feature is coming soon!</p>
-        <div style="text-align: center;">
-            <button class="back-button" onclick="showPage('welcome')">← Back to Welcome</button>
-        </div>
     </div>
 
     <script>
-        // Page navigation
-        function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            const targetPage = document.getElementById(pageId);
-            targetPage.classList.add('active');
-            if (pageId === 'compound') {
-                updateCalculation();
-                // Use requestAnimationFrame to ensure canvas is rendered after DOM update
-                requestAnimationFrame(() => {
-                    console.log('Attempting to update chart for compound page');
-                    updateChart();
-                });
-            } else {
-                if (nestEggChart) {
-                    console.log('Destroying chart as leaving compound page');
-                    nestEggChart.destroy();
-                    nestEggChart = null;
-                }
-            }
-        }
-
         // Dropdown toggle
         function toggleDropdown() {
             const content = document.getElementById('howToUseContent');
@@ -453,17 +434,12 @@
 
             // Apply formatting to all realized inputs
             document.querySelectorAll('.realized-nest-egg').forEach(formatFinancialInput);
-            requestAnimationFrame(() => {
-                console.log('Updating chart after table population');
-                updateChart();
-            });
+            requestAnimationFrame(updateChart);
         }
 
         function updateChart() {
-            const compoundPage = document.getElementById('compound');
             const canvas = document.getElementById('nestEggChart');
-            if (!compoundPage.classList.contains('active') || !canvas || canvas.offsetWidth === 0) {
-                console.log('Chart not updated: Compound page not active or canvas not visible');
+            if (!canvas || canvas.offsetWidth === 0) {
                 if (nestEggChart) {
                     nestEggChart.destroy();
                     nestEggChart = null;
@@ -473,7 +449,6 @@
 
             const years = parseInt(inputs.ageRetirement.value) - parseInt(inputs.ageNow.value);
             if (years <= 0 || yearlyBreakdown.children.length === 0) {
-                console.log('Chart not updated: Invalid years or empty table');
                 if (nestEggChart) {
                     nestEggChart.destroy();
                     nestEggChart = null;
@@ -494,14 +469,12 @@
             });
 
             const ctx = canvas.getContext('2d');
-            console.log('Chart context retrieved, initializing/updating chart');
 
             if (nestEggChart) {
                 nestEggChart.data.labels = labels;
                 nestEggChart.data.datasets[0].data = targetData;
                 nestEggChart.data.datasets[1].data = realizedData;
                 nestEggChart.update();
-                console.log('Chart updated');
             } else {
                 nestEggChart = new Chart(ctx, {
                     type: 'line',
@@ -555,11 +528,10 @@
                         }
                     }
                 });
-                console.log('Chart initialized');
             }
         }
 
-        async function downloadCSV() {
+        function downloadCSV() {
             const startAge = parseInt(inputs.ageNow.value);
             const endAge = parseInt(inputs.ageRetirement.value);
             const years = endAge - startAge;
@@ -584,10 +556,6 @@
             }
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            fallbackDownload(blob); // Firefox doesn’t support showSaveFilePicker, use fallback
-        }
-
-        function fallbackDownload(blob) {
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
@@ -626,13 +594,7 @@
         // Initial calculation
         document.addEventListener('DOMContentLoaded', () => {
             updateCalculation();
-            // Only update chart if compound page is initially active (not the case here, but for robustness)
-            if (document.getElementById('compound').classList.contains('active')) {
-                requestAnimationFrame(() => {
-                    console.log('Initial chart update on DOM load');
-                    updateChart();
-                });
-            }
+            requestAnimationFrame(updateChart);
         });
     </script>
 </body>
