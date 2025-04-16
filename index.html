@@ -1,37 +1,60 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row =>
+                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                );
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compound Interest Yield Calculator</title>
+    <title>Compound Interest Calculator</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
-            padding: 15px;
-            box-sizing: border-box;
+            padding: 20px;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
         }
         .table-group {
             border-collapse: collapse;
-            margin: 20px auto;
-            width: 90%;
-            max-width: 800px;
-        }
-        #yearlyBreakdownTable.table-group {
-            max-width: 1000px;
-            display: table;
-            visibility: visible;
-            overflow: visible;
-        }
-        #yearlyBreakdownTable tbody {
-            display: table-row-group;
+            margin: 40px auto;
+            width: 80%;
         }
         .table-container {
             display: flex;
             justify-content: center;
             gap: 20px;
-            flex-wrap: wrap;
         }
         table {
             border-collapse: collapse;
@@ -40,13 +63,11 @@
         td {
             padding: 8px;
             border: 1px solid #ddd;
-            font-size: 14px;
-            box-sizing: border-box;
         }
         .title {
             text-align: center;
             font-weight: bold;
-            font-size: 1.4em;
+            font-size: 1.2em;
             padding: 15px;
             border: none;
         }
@@ -54,22 +75,24 @@
             text-align: center;
             padding: 10px;
             border: none;
-            font-size: 1em;
         }
         .highlight input {
             background-color: #e6f3ff;
             border: 1px solid #999;
-            padding: 6px;
+            padding: 4px;
             width: 100px;
             text-align: right;
-            font-size: 14px;
-            border-radius: 4px;
-            box-sizing: border-box;
+        }
+        .realized-input input {
+            background-color: #fff3e6;
+            border: 1px solid #999;
+            padding: 4px;
+            width: 100px;
+            text-align: right;
         }
         .section-header {
             font-weight: bold;
             background-color: #f5f5f5;
-            font-size: 1.1em;
         }
         .result {
             font-weight: bold;
@@ -90,7 +113,6 @@
             border-radius: 5px;
             font-weight: bold;
             float: right;
-            touch-action: manipulation;
         }
         .download-button:hover {
             background-color: #218838;
@@ -98,21 +120,6 @@
         .dropdown {
             cursor: pointer;
             user-select: none;
-            position: relative;
-            display: inline-block;
-            width: 200px;
-            padding-left: 20px;
-        }
-        .dropdown::before {
-            content: '▼';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            transition: transform 0.2s;
-        }
-        .dropdown.active::before {
-            transform: translateY(-50%) rotate(180deg);
         }
         .dropdown-content {
             display: none;
@@ -124,224 +131,38 @@
             color: #28a745;
         }
         #nestEggChart {
-            margin: 20px auto;
-            width: 90%;
-            max-width: 800px;
+            margin: 40px auto;
+            width: 80%;
             max-height: 400px;
             display: block;
-            visibility: visible;
-        }
-        /* Column-specific widths */
-        .year-col {
-            width: 64px;
-            min-width: 64px;
-            max-width: 64px;
-            white-space: nowrap;
-            text-align: center;
-            box-sizing: border-box;
-        }
-        .age-col {
-            width: 57px;
-            min-width: 57px;
-            max-width: 57px;
-            white-space: nowrap;
-            text-align: center;
-            box-sizing: border-box;
-        }
-        .nest-egg-start-col {
-            width: 134px;
-            min-width: 134px;
-            max-width: 134px;
-            white-space: nowrap;
-            text-align: right;
-            box-sizing: border-box;
-        }
-        .yearly-addition-col {
-            width: 141px;
-            min-width: 141px;
-            max-width: 141px;
-            white-space: nowrap;
-            text-align: right;
-            box-sizing: border-box;
-        }
-        .target-value {
-            width: 141px;
-            min-width: 141px;
-            max-width: 141px;
-            white-space: nowrap;
-            text-align: right;
-            box-sizing: border-box;
-        }
-        .target-percentage {
-            width: 92px;
-            min-width: 92px;
-            max-width: 92px;
-            white-space: nowrap;
-            text-align: right;
-            box-sizing: border-box;
-        }
-        .realized-input {
-            width: 155px;
-            min-width: 155px;
-            max-width: 155px;
-            white-space: nowrap;
-            text-align: right;
-            box-sizing: border-box;
-        }
-        .realized-input input {
-            background-color: #fff3e6;
-            border: 1px solid #999;
-            padding: 6px;
-            width: 139px; /* 155px - 16px padding */
-            max-width: 139px;
-            text-align: right;
-            font-size: 14px;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        .realized-percentage {
-            width: 106px;
-            min-width: 106px;
-            max-width: 106px;
-            white-space: nowrap;
-            text-align: right;
-            box-sizing: border-box;
-        }
-        .percentage-value {
-            width: 190px;
-            min-width: 190px;
-            max-width: 190px;
-            white-space: nowrap;
-            text-align: right;
-            box-sizing: border-box;
-        }
-        @media (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            .table-group {
-                width: 100%;
-                margin: 10px auto;
-            }
-            .table-container {
-                flex-direction: column;
-                gap: 10px;
-            }
-            table {
-                font-size: 12px;
-            }
-            td {
-                padding: 6px;
-            }
-            .highlight input {
-                width: 80px;
-                max-width: 80px;
-                font-size: 12px;
-                padding: 5px;
-            }
-            .realized-input input {
-                width: 97px; /* 155px * 0.7 - 12px padding */
-                max-width: 97px;
-                font-size: 12px;
-                padding: 5px;
-            }
-            .title {
-                font-size: 1.2em;
-                padding: 10px;
-            }
-            .subtitle {
-                font-size: 0.9em;
-            }
-            .section-header {
-                font-size: 1em;
-            }
-            .result {
-                font-size: 1.2em;
-                padding: 8px;
-            }
-            .download-button {
-                padding: 8px 16px;
-                font-size: 12px;
-                width: 100%;
-                float: none;
-                margin-top: 10px;
-            }
-            #yearlyBreakdownTable {
-                display: block;
-                overflow-x: auto;
-                white-space: nowrap;
-            }
-            .year-col {
-                width: 45px; /* 64px * 0.7 */
-                min-width: 45px;
-                max-width: 45px;
-            }
-            .age-col {
-                width: 40px; /* 57px * 0.7 */
-                min-width: 40px;
-                max-width: 40px;
-            }
-            .nest-egg-start-col {
-                width: 94px; /* 134px * 0.7 */
-                min-width: 94px;
-                max-width: 94px;
-            }
-            .yearly-addition-col {
-                width: 99px; /* 141px * 0.7 */
-                min-width: 99px;
-                max-width: 99px;
-            }
-            .target-value {
-                width: 99px; /* 141px * 0.7 */
-                min-width: 99px;
-                max-width: 99px;
-            }
-            .target-percentage {
-                width: 64px; /* 92px * 0.7 */
-                min-width: 64px;
-                max-width: 64px;
-            }
-            .realized-input {
-                width: 109px; /* 155px * 0.7 */
-                min-width: 109px;
-                max-width: 109px;
-            }
-            .realized-percentage {
-                width: 74px; /* 106px * 0.7 */
-                min-width: 74px;
-                max-width: 74px;
-            }
-            .percentage-value {
-                width: 133px; /* 190px * 0.7 */
-                min-width: 133px;
-                max-width: 133px;
-            }
-            #nestEggChart {
-                width: 100%;
-                max-height: 300px;
-            }
         }
     </style>
 </head>
 <body>
+    <!-- Compound Interest Calculator Page -->
     <div id="compound" class="page active">
+        <!-- Title and Subtitle Table -->
         <table class="table-group">
             <tr>
-                <td colspan="13" class="title">Compound Interest Yield Calculator</td>
+                <td colspan="12" class="title">Compound Interest Yield Calculator</td>
             </tr>
             <tr>
-                <td colspan="13" class="subtitle">
-                    Know the yearly interest rate needed to grow your current nest-egg to your retirement goal
+                <td colspan="12" class="subtitle">
+                    know the yearly interest rate needed to bring your current nest-egg 
+                    to the size of your retirement nest-egg
                 </td>
             </tr>
         </table>
+
+        <!-- Today and Retirement Tables Side by Side -->
         <div class="table-container">
+            <!-- Today Table -->
             <table class="table-group">
                 <tr>
                     <td colspan="5" class="section-header">TODAY</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Money available today</td>
+                    <td colspan="2">the money available for investment today</td>
                     <td>Nest-Egg Now</td>
                     <td class="highlight"><input type="text" id="nestEggNow" value="150,000"></td>
                     <td>[1]</td>
@@ -353,25 +174,26 @@
                     <td>[2]</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Annual contribution</td>
+                    <td colspan="2">the money you can add each year till you retire</td>
                     <td>Yearly Addition ($)</td>
                     <td class="highlight"><input type="text" id="yearlyAddition" value="6,000"></td>
                     <td>[3]</td>
                 </tr>
             </table>
 
+            <!-- Retirement Table -->
             <table class="table-group">
                 <tr>
                     <td colspan="5" class="section-header">RETIREMENT</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Nest-Egg Goal</td>
+                    <td colspan="2">Nest-Egg at Retirement</td>
                     <td class="highlight"><input type="text" id="nestEggRetirement" value="2,400,000"></td>
                     <td>[4]</td>
-                    <td>Your retirement target</td>
+                    <td>the amount of money you need when you retire</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Retirement Age</td>
+                    <td colspan="2">Your Age at Retirement</td>
                     <td class="highlight"><input type="number" id="ageRetirement" value="55" step="1"></td>
                     <td></td>
                     <td></td>
@@ -385,11 +207,12 @@
             </table>
         </div>
 
+        <!-- Results Table -->
         <table class="table-group">
             <tr class="no-border">
                 <td colspan="3" class="no-border"></td>
                 <td id="interestRate" class="result no-border">24.52 %</td>
-                <td colspan="3" class="result no-border">Yearly interest rate needed</td>
+                <td colspan="3" class="result no-border">the yearly interest rate needed to reach your targeted nest-egg</td>
             </tr>
             <tr class="no-border">
                 <td colspan="3" class="no-border"></td>
@@ -398,68 +221,63 @@
             </tr>
         </table>
 
+        <!-- How to Use Table -->
         <table class="table-group">
             <tr>
-                <td class="section-header">
-                    <div class="dropdown">How to use</div>
-                </td>
+                <td colspan="12" class="section-header dropdown" onclick="toggleDropdown()">How to use ▼</td>
             </tr>
             <tbody id="howToUseContent" class="dropdown-content">
                 <tr>
-                    <td>Only adjust the cells highlighted in blue</td>
+                    <td colspan="12">Only adjust the cells highlighted in blue</td>
                 </tr>
                 <tr>
-                    <td>[1] Input your current nest-egg value</td>
+                    <td colspan="12">[1] Input your current nest-egg value</td>
                 </tr>
                 <tr>
-                    <td>[2] Input your age now</td>
+                    <td colspan="12">[2] Input your age now</td>
                 </tr>
                 <tr>
-                    <td>[3] Input your committed yearly addition</td>
+                    <td colspan="12">[3] Input your committed yearly addition</td>
                 </tr>
                 <tr>
-                    <td>[4] Input your retirement nest-egg goal</td>
+                    <td colspan="12">[4] Input the age you want to retire</td>
                 </tr>
             </tbody>
         </table>
 
-        <table id="yearlyBreakdownTable" class="table-group">
+        <!-- Year-by-Year Breakdown Table -->
+        <table class="table-group">
             <tr>
-                <td colspan="12" class="section-header">Year-by-Year Breakdown</td>
+                <td colspan="11" class="section-header">Year-by-Year Breakdown</td>
                 <td class="section-header" style="text-align: right;">
                     <button class="download-button" onclick="downloadCSV()">Download</button>
                 </td>
             </tr>
             <tr>
-                <td colspan="2" class="year-col">Year</td>
-                <td colspan="2" class="age-col">Age</td>
-                <td colspan="2" class="nest-egg-start-col">Nest-Egg Start</td>
-                <td colspan="2" class="yearly-addition-col">Yearly Addition</td>
-                <td colspan="1" class="target-value">Nest-Egg Target</td>
-                <td colspan="1" class="target-percentage">% Target</td>
-                <td colspan="1" class="realized-input">Nest-Egg Realized</td>
-                <td colspan="1" class="realized-percentage">% Realized</td>
-                <td colspan="1" class="percentage-value">Realized vs Target (%)</td>
+                <td colspan="2">Year</td>
+                <td colspan="2">Age</td>
+                <td colspan="2">Nest-Egg Start</td>
+                <td colspan="2">Yearly Addition</td>
+                <td colspan="1">Nest-Egg Target</td>
+                <td colspan="1">Nest-Egg Realized</td>
+                <td colspan="1">% Realized</td>
+                <td colspan="1">Realized vs Target (%)</td>
             </tr>
             <tbody id="yearlyBreakdown"></tbody>
         </table>
 
+        <!-- Nest-Egg Comparison Chart -->
         <canvas id="nestEggChart"></canvas>
     </div>
 
     <script>
-        function toggleDropdown(event) {
+        // Dropdown toggle
+        function toggleDropdown() {
             const content = document.getElementById('howToUseContent');
-            const header = event.currentTarget;
-            if (content && header) {
-                content.classList.toggle('active');
-                header.classList.toggle('active');
-                console.log('Dropdown toggled');
-            } else {
-                console.error('Dropdown content or header not found');
-            }
+            content.classList.toggle('active');
         }
 
+        // Compound Interest Calculator Logic
         const inputs = {
             nestEggNow: document.getElementById('nestEggNow'),
             nestEggRetirement: document.getElementById('nestEggRetirement'),
@@ -484,16 +302,15 @@
 
         function formatFinancialInput(input, isRealized = false) {
             input.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^0-9,]/g, '');
+                let value = e.target.value.replace(/[^0-9]/g, '');
                 if (value) {
-                    let num = parseFormattedNumber(value);
-                    e.target.value = formatNumber(num);
+                    e.target.value = formatNumber(parseInt(value));
                 }
                 if (isRealized) {
                     const rowIndex = Array.from(yearlyBreakdown.querySelectorAll('tr')).indexOf(e.target.closest('tr'));
                     realizedValues[rowIndex] = e.target.value;
                     updateRealizedVsTarget();
-                    updateChart();
+                    requestAnimationFrame(updateChart);
                 } else {
                     updateCalculation();
                 }
@@ -505,7 +322,7 @@
                         const rowIndex = Array.from(yearlyBreakdown.querySelectorAll('tr')).indexOf(e.target.closest('tr'));
                         realizedValues[rowIndex] = "";
                         updateRealizedVsTarget();
-                        updateChart();
+                        requestAnimationFrame(updateChart);
                     }
                 }
                 if (!isRealized) {
@@ -514,7 +331,7 @@
             });
         }
 
-        Object.values(inputs).filter(input => input).forEach(input => formatFinancialInput(input, false));
+        [inputs.nestEggNow, inputs.nestEggRetirement, inputs.yearlyAddition].forEach(input => formatFinancialInput(input, false));
 
         function calculateFutureValue(principal, rate, years, yearlyAddition) {
             let total = principal;
@@ -527,20 +344,17 @@
         function findInterestRate() {
             const principal = parseFormattedNumber(inputs.nestEggNow.value);
             const target = parseFormattedNumber(inputs.nestEggRetirement.value);
-            const years = parseFloat(yearsToCompound.textContent) || 0;
+            const years = parseFloat(yearsToCompound.textContent);
             const addition = parseFormattedNumber(inputs.yearlyAddition.value);
-
-            if (!principal || !target || !years || years <= 0) {
-                return 0;
-            }
 
             let low = 0;
             let high = 1;
+            let mid;
             const precision = 0.0001;
             let maxIterations = 100;
 
             while (maxIterations-- > 0) {
-                const mid = (low + high) / 2;
+                mid = (low + high) / 2;
                 const result = calculateFutureValue(principal, mid, years, addition);
 
                 if (Math.abs(result - target) < precision) {
@@ -552,11 +366,10 @@
                     high = mid;
                 }
             }
-            return (low + high) / 2;
+            return mid;
         }
 
         function updateRealizedVsTarget() {
-            console.log('Updating Realized vs Target');
             const rows = yearlyBreakdown.querySelectorAll('tr');
             if (rows.length === 0) return;
 
@@ -606,8 +419,7 @@
             });
         }
 
-        function updateYearlyBreakdown() {
-            console.log('Updating Yearly Breakdown');
+        function updateYearlyBreakdown(rate) {
             const oldRows = yearlyBreakdown.querySelectorAll('tr');
             oldRows.forEach((row, index) => {
                 const realizedInput = row.querySelector('.realized-nest-egg');
@@ -617,34 +429,26 @@
             });
 
             yearlyBreakdown.innerHTML = '';
-            const startAge = parseInt(inputs.ageNow.value) || 0;
-            const endAge = parseInt(inputs.ageRetirement.value) || 0;
+            const startAge = parseInt(inputs.ageNow.value);
+            const endAge = parseInt(inputs.ageRetirement.value);
             const years = endAge - startAge;
             let currentNestEgg = parseFormattedNumber(inputs.nestEggNow.value);
             const addition = parseFormattedNumber(inputs.yearlyAddition.value);
-            const fixedRate = 0.2452;
-
-            if (years <= 0) {
-                realizedValues = [];
-                return;
-            }
 
             for (let i = 0; i < years; i++) {
                 const row = document.createElement('tr');
                 const year = i + 1;
                 const age = startAge + i;
                 const nestEggStart = currentNestEgg;
-                const nestEggTarget = (nestEggStart * fixedRate) + nestEggStart + addition;
-                const targetPercentage = nestEggStart ? ((nestEggTarget / nestEggStart) - 1) * 100 : 0;
+                const nestEggTarget = nestEggStart * (1 + rate) + addition;
                 const realizedValue = realizedValues[i] || "";
 
                 row.innerHTML = `
-                    <td colspan="2" class="year-col">${year}</td>
-                    <td colspan="2" class="age-col">${age}</td>
-                    <td colspan="2" class="nest-egg-start-col">${formatNumber(nestEggStart)}</td>
-                    <td colspan="2" class="yearly-addition-col">${formatNumber(addition)}</td>
+                    <td colspan="2">${year}</td>
+                    <td colspan="2">${age}</td>
+                    <td colspan="2">${formatNumber(nestEggStart)}</td>
+                    <td colspan="2">${formatNumber(addition)}</td>
                     <td colspan="1" class="target-value">${formatNumber(nestEggTarget)}</td>
-                    <td colspan="1" class="target-percentage">${targetPercentage.toFixed(2)} %</td>
                     <td colspan="1" class="realized-input"><input type="text" class="realized-nest-egg" value="${realizedValue}"></td>
                     <td colspan="1" class="realized-percentage"></td>
                     <td colspan="1" class="percentage-value"></td>
@@ -655,18 +459,23 @@
 
             document.querySelectorAll('.realized-nest-egg').forEach(input => formatFinancialInput(input, true));
             updateRealizedVsTarget();
-            updateChart();
+            requestAnimationFrame(() => {
+                updateChart();
+            });
         }
 
         function updateChart() {
-            console.log('Updating Chart');
+            const compoundPage = document.getElementById('compound');
             const canvas = document.getElementById('nestEggChart');
-            if (!canvas) {
-                console.error('Canvas not found');
+            if (!compoundPage.classList.contains('active') || !canvas || canvas.offsetWidth === 0) {
+                if (nestEggChart) {
+                    nestEggChart.destroy();
+                    nestEggChart = null;
+                }
                 return;
             }
 
-            const years = (parseInt(inputs.ageRetirement.value) || 0) - (parseInt(inputs.ageNow.value) || 0);
+            const years = parseInt(inputs.ageRetirement.value) - parseInt(inputs.ageNow.value);
             if (years <= 0 || yearlyBreakdown.children.length === 0) {
                 if (nestEggChart) {
                     nestEggChart.destroy();
@@ -681,19 +490,13 @@
             const rows = yearlyBreakdown.querySelectorAll('tr');
 
             rows.forEach(row => {
-                const targetCell = row.querySelector('.target-value');
-                const realizedCell = row.querySelector('.realized-nest-egg');
-                const targetValue = targetCell ? parseFormattedNumber(targetCell.textContent) || 0 : 0;
-                const realizedValue = realizedCell ? parseFormattedNumber(realizedCell.value) || null : null;
+                const targetValue = parseFormattedNumber(row.querySelector('.target-value').textContent) || 0;
+                const realizedValue = parseFormattedNumber(row.querySelector('.realized-nest-egg').value) || null;
                 targetData.push(targetValue);
                 realizedData.push(realizedValue);
             });
 
             const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                console.error('Canvas context not available');
-                return;
-            }
 
             if (nestEggChart) {
                 nestEggChart.data.labels = labels;
@@ -701,137 +504,122 @@
                 nestEggChart.data.datasets[1].data = realizedData;
                 nestEggChart.update();
             } else {
-                try {
-                    nestEggChart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [
-                                {
-                                    label: 'Nest-Egg Target',
-                                    data: targetData,
-                                    borderColor: '#0066cc',
-                                    backgroundColor: 'rgba(0, 102, 204, 0.1)',
-                                    fill: false,
-                                    tension: 0.1
-                                },
-                                {
-                                    label: 'Nest-Egg Realized',
-                                    data: realizedData,
-                                    borderColor: '#ff6200',
-                                    backgroundColor: 'rgba(255, 98, 0, 0.1)',
-                                    fill: false,
-                                    tension: 0.1
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: true,
-                            scales: {
-                                x: {
-                                    title: {
-                                        display: true,
-                                        text: 'Years'
-                                    }
-                                },
-                                y: {
-                                    title: {
-                                        display: true,
-                                        text: 'Nest-Egg Value ($)'
-                                    },
-                                    beginAtZero: true
-                                }
+                nestEggChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Nest-Egg Target',
+                                data: targetData,
+                                borderColor: '#0066cc',
+                                backgroundColor: 'rgba(0, 102, 204, 0.1)',
+                                fill: false,
+                                tension: 0.1
                             },
-                            plugins: {
-                                legend: {
-                                    position: 'top'
-                                },
+                            {
+                                label: 'Nest-Egg Realized',
+                                data: realizedData,
+                                borderColor: '#ff6200',
+                                backgroundColor: 'rgba(255, 98, 0, 0.1)',
+                                fill: false,
+                                tension: 0.1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            x: {
                                 title: {
                                     display: true,
-                                    text: 'Nest-Egg Target vs Realized'
+                                    text: 'Years'
                                 }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Nest-Egg Value ($)'
+                                },
+                                beginAtZero: true
                             }
-                        }
-                    });
-                    console.log('Chart initialized');
-                } catch (err) {
-                    console.error('Chart initialization failed:', err);
-                }
-            }
-        }
-
-        function downloadCSV() {
-            console.log('Downloading CSV');
-            try {
-                const startAge = parseInt(inputs.ageNow.value) || 0;
-                const endAge = parseInt(inputs.ageRetirement.value) || 0;
-                const years = endAge - startAge;
-                let currentNestEgg = parseFormattedNumber(inputs.nestEggNow.value);
-                const addition = parseFormattedNumber(inputs.yearlyAddition.value);
-                const fixedRate = 0.2452;
-                const initialNestEgg = currentNestEgg;
-
-                let csvContent = "Year,Age,Nest-Egg Start,Yearly Addition,Nest-Egg Target,% Target,Nest-Egg Realized,% Realized,Realized vs Target (%)\n";
-                const rows = yearlyBreakdown.querySelectorAll('tr');
-
-                for (let i = 0; i < years; i++) {
-                    const year = i + 1;
-                    const age = startAge + i;
-                    const nestEggStart = currentNestEgg;
-                    const nestEggTarget = (nestEggStart * fixedRate) + nestEggStart + addition;
-                    const targetPercentage = nestEggStart ? ((nestEggTarget / nestEggStart) - 1) * 100 : 0;
-                    const realizedInput = rows[i]?.querySelector('.realized-nest-egg')?.value || '';
-                    const realizedValue = realizedInput ? parseFormattedNumber(realizedInput) : '';
-                    let realizedPercentage = '';
-                    if (realizedValue) {
-                        if (i === 0) {
-                            if (initialNestEgg !== 0) {
-                                realizedPercentage = ((realizedValue / initialNestEgg) - 1) * 100;
-                            }
-                        } else {
-                            const prevRow = rows[i - 1];
-                            const prevRealized = parseFormattedNumber(prevRow?.querySelector('.realized-nest-egg')?.value) || 0;
-                            if (prevRealized !== 0) {
-                                realizedPercentage = ((realizedValue / prevRealized) - 1) * 100;
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Nest-Egg Target vs Realized'
                             }
                         }
                     }
-                    const percentage = (realizedValue && nestEggTarget) ? (((realizedValue - nestEggTarget) / nestEggTarget) * 100).toFixed(2) : '';
-
-                    csvContent += `${year},${age},${nestEggStart},${addition},${nestEggTarget},${targetPercentage.toFixed(2)},${realizedValue},${realizedPercentage ? realizedPercentage.toFixed(2) : ''},${percentage}\n`;
-                    currentNestEgg = nestEggTarget;
-                }
-
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                const url = URL.createObjectURL(blob);
-                link.setAttribute("href", url);
-                link.setAttribute("download", "yearly_breakdown.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            } catch (err) {
-                console.error('Error in downloadCSV:', err);
+                });
             }
         }
 
+        async function downloadCSV() {
+            const startAge = parseInt(inputs.ageNow.value);
+            const endAge = parseInt(inputs.ageRetirement.value);
+            const years = endAge - startAge;
+            let currentNestEgg = parseFormattedNumber(inputs.nestEggNow.value);
+            const addition = parseFormattedNumber(inputs.yearlyAddition.value);
+            const rate = findInterestRate();
+            const initialNestEgg = currentNestEgg;
+
+            let csvContent = "Year,Age,Nest-Egg Start,Yearly Addition,Nest-Egg Target,Nest-Egg Realized,% Realized,Realized vs Target (%)\n";
+            const rows = yearlyBreakdown.querySelectorAll('tr');
+
+            for (let i = 0; i < years; i++) {
+                const year = i + 1;
+                const age = startAge + i;
+                const nestEggStart = currentNestEgg;
+                const nestEggTarget = nestEggStart * (1 + rate) + addition;
+                const realizedInput = rows[i]?.querySelector('.realized-nest-egg')?.value || '';
+                const realizedValue = realizedInput ? parseFormattedNumber(realizedInput) : '';
+                let realizedPercentage = '';
+                if (realizedValue) {
+                    if (i === 0) {
+                        if (initialNestEgg !== 0) {
+                            realizedPercentage = ((realizedValue / initialNestEgg) - 1) * 100;
+                        }
+                    } else {
+                        const prevRow = rows[i - 1];
+                        const prevRealized = parseFormattedNumber(prevRow?.querySelector('.realized-nest-egg')?.value) || 0;
+                        if (prevRealized !== 0) {
+                            realizedPercentage = ((realizedValue / prevRealized) - 1) * 100;
+                        }
+                    }
+                }
+                const percentage = (realizedValue && nestEggTarget) ? (((realizedValue - nestEggTarget) / nestEggTarget) * 100).toFixed(2) : '';
+
+                csvContent += `${year},${age},${nestEggStart},${addition},${nestEggTarget},${realizedValue},${realizedPercentage ? realizedPercentage.toFixed(2) : ''},${percentage}\n`;
+                currentNestEgg = nestEggTarget;
+            }
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "yearly_breakdown.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
         function updateCalculation() {
-            console.log('Updating Calculation');
-            const ageNow = parseInt(inputs.ageNow.value) || 0;
-            const ageRetirement = parseInt(inputs.ageRetirement.value) || 0;
-            const years = ageRetirement - ageNow;
+            const years = parseInt(inputs.ageRetirement.value) - parseInt(inputs.ageNow.value);
             yearsToCompound.textContent = years > 0 ? years : 0;
 
-            const nestEggNow = parseFormattedNumber(inputs.nestEggNow.value);
-            const nestEggRetirement = parseFormattedNumber(inputs.nestEggRetirement.value);
-            const yearlyAddition = parseFormattedNumber(inputs.yearlyAddition.value);
-
-            if (years > 0 && nestEggNow > 0 && nestEggRetirement > 0 && yearlyAddition >= 0) {
+            if (years > 0 && 
+                inputs.nestEggNow.value && 
+                inputs.nestEggRetirement.value && 
+                inputs.yearlyAddition.value) {
                 const rate = findInterestRate();
                 interestRate.textContent = (rate * 100).toFixed(2) + " %";
-                updateYearlyBreakdown();
+                updateYearlyBreakdown(rate);
             } else {
                 interestRate.textContent = 'N/A';
                 yearlyBreakdown.innerHTML = '';
@@ -843,19 +631,16 @@
             }
         }
 
-        // Initialize event listeners
+        Object.values(inputs).forEach(input => {
+            input.addEventListener('input', updateCalculation);
+        });
+
+        // Initial calculation
         document.addEventListener('DOMContentLoaded', () => {
-            const dropdownHeader = document.querySelector('.dropdown');
-            if (dropdownHeader) {
-                dropdownHeader.addEventListener('click', toggleDropdown);
-                console.log('Dropdown listener attached');
-            } else {
-                console.error('Dropdown header not found');
-            }
-            Object.values(inputs).filter(input => input).forEach(input => {
-                input.addEventListener('input', updateCalculation);
-            });
             updateCalculation();
+            requestAnimationFrame(() => {
+                updateChart();
+            });
         });
     </script>
 </body>
