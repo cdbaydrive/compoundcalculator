@@ -2,6 +2,9 @@
         var gk_isXlsx = false;
         var gk_xlsxFileLookup = {};
         var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
         function loadFileData(filename) {
         if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
             try {
@@ -12,12 +15,19 @@
                 // Convert sheet to JSON to filter blank rows
                 var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
                 // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row =>
-                    row.some(cell => cell !== '' && cell !== null && cell !== undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
                 );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
 
                 // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
                 csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
                 return csv;
             } catch (e) {
@@ -103,7 +113,7 @@
         .no-border {
             border: none;
         }
-        .download-button {
+        .download-button, .process-button {
             padding: 10px 20px;
             font-size: 14px;
             cursor: pointer;
@@ -112,9 +122,12 @@
             border: none;
             border-radius: 5px;
             font-weight: bold;
+            margin-left: 10px;
+        }
+        .download-button {
             float: right;
         }
-        .download-button:hover {
+        .download-button:hover, .process-button:hover {
             background-color: #218838;
         }
         .dropdown {
@@ -136,6 +149,14 @@
             max-height: 400px;
             display: block;
         }
+        .upload-section {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+        }
+        .upload-section input[type="file"] {
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
@@ -154,6 +175,21 @@
             </tr>
         </table>
 
+        <!-- Upload File Section -->
+        <table class="table-group">
+            <tr>
+                <td colspan="13" class="section-header">
+                    Upload Data
+                </td>
+            </tr>
+            <tr>
+                <td colspan="13" class="upload-section">
+                    <input type="file" id="uploadFile" accept=".csv">
+                    <button class="process-button" onclick="processUploadedFile()">Process</button>
+                </td>
+            </tr>
+        </table>
+
         <!-- Today and Retirement Tables Side by Side -->
         <div class="table-container">
             <!-- Today Table -->
@@ -164,19 +200,19 @@
                 <tr>
                     <td colspan="2">the money available for investment today</td>
                     <td>Nest-Egg Now</td>
-                    <td class="highlight"><input type="text" id="nestEggNow" value="150,000"></td>
+                    <td class="highlight"><input type="text" id="nestEggNow" value="350,000"></td>
                     <td>[1]</td>
                 </tr>
                 <tr>
                     <td colspan="2"></td>
                     <td>Your Age Now</td>
-                    <td class="highlight"><input type="number" id="ageNow" value="43" step="1"></td>
+                    <td class="highlight"><input type="number" id="ageNow" value="47" step="1"></td>
                     <td>[2]</td>
                 </tr>
                 <tr>
                     <td colspan="2">the money you can add each year till you retire</td>
                     <td>Yearly Addition ($)</td>
-                    <td class="highlight"><input type="text" id="yearlyAddition" value="6,000"></td>
+                    <td class="highlight"><input type="text" id="yearlyAddition" value="12,000"></td>
                     <td>[3]</td>
                 </tr>
             </table>
@@ -200,7 +236,7 @@
                 </tr>
                 <tr>
                     <td colspan="2">Years to Compound</td>
-                    <td id="yearsToCompound">12</td>
+                    <td id="yearsToCompound">8</td>
                     <td></td>
                     <td></td>
                 </tr>
@@ -248,9 +284,9 @@
         <!-- Year-by-Year Breakdown Table -->
         <table class="table-group">
             <tr>
-                <td colspan="11" class="section-header">Year-by-Year Breakdown</td>
-                <td class="section-header" style="text-align: right;">
-                    <button class="download-button" onclick="downloadCSV()">Download</button>
+                <td colspan="13" class="section-header">
+                    Year-by-Year Breakdown
+                    <button class="download-button" onclick="initiateDownload()">Download</button>
                 </td>
             </tr>
             <tr>
@@ -259,6 +295,7 @@
                 <td colspan="2">Nest-Egg Start</td>
                 <td colspan="2">Yearly Addition</td>
                 <td colspan="1">Nest-Egg Target</td>
+                <td colspan="1">% Target</td>
                 <td colspan="1">Nest-Egg Realized</td>
                 <td colspan="1">% Realized</td>
                 <td colspan="1">Realized vs Target (%)</td>
@@ -269,6 +306,47 @@
         <!-- Nest-Egg Comparison Chart -->
         <canvas id="nestEggChart"></canvas>
     </div>
+
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+
+                    // Convert sheet to JSON to filter blank rows
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                    var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                    // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                    var headerRowIndex = filteredData.findIndex((row, index) =>
+                      row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                    );
+                    // Fallback
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                      headerRowIndex = 0;
+                    }
+
+                    // Convert filtered JSON back to CSV
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+    </script>
 
     <script>
         // Dropdown toggle
@@ -290,6 +368,7 @@
         const yearlyBreakdown = document.getElementById('yearlyBreakdown');
         let nestEggChart = null;
         let realizedValues = [];
+        let uploadedFileContent = null;
 
         function formatNumber(num) {
             return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -420,20 +499,18 @@
         }
 
         function updateYearlyBreakdown(rate) {
-            const oldRows = yearlyBreakdown.querySelectorAll('tr');
-            oldRows.forEach((row, index) => {
-                const realizedInput = row.querySelector('.realized-nest-egg');
-                if (realizedInput) {
-                    realizedValues[index] = realizedInput.value;
-                }
-            });
-
             yearlyBreakdown.innerHTML = '';
-            const startAge = parseInt(inputs.ageNow.value);
-            const endAge = parseInt(inputs.ageRetirement.value);
+            const startAge = parseInt(inputs.ageNow.value) || 0;
+            const endAge = parseInt(inputs.ageRetirement.value) || 0;
             const years = endAge - startAge;
             let currentNestEgg = parseFormattedNumber(inputs.nestEggNow.value);
             const addition = parseFormattedNumber(inputs.yearlyAddition.value);
+
+            // Ensure realizedValues array matches the number of years
+            while (realizedValues.length < years) {
+                realizedValues.push('');
+            }
+            realizedValues.length = years; // Truncate if too long
 
             for (let i = 0; i < years; i++) {
                 const row = document.createElement('tr');
@@ -441,7 +518,8 @@
                 const age = startAge + i;
                 const nestEggStart = currentNestEgg;
                 const nestEggTarget = nestEggStart * (1 + rate) + addition;
-                const realizedValue = realizedValues[i] || "";
+                const targetPercentage = nestEggStart !== 0 ? (((nestEggTarget / nestEggStart) - 1) * 100).toFixed(2) : '';
+                const realizedValue = realizedValues[i] || '';
 
                 row.innerHTML = `
                     <td colspan="2">${year}</td>
@@ -449,6 +527,7 @@
                     <td colspan="2">${formatNumber(nestEggStart)}</td>
                     <td colspan="2">${formatNumber(addition)}</td>
                     <td colspan="1" class="target-value">${formatNumber(nestEggTarget)}</td>
+                    <td colspan="1" class="target-percentage">${targetPercentage ? targetPercentage + ' %' : ''}</td>
                     <td colspan="1" class="realized-input"><input type="text" class="realized-nest-egg" value="${realizedValue}"></td>
                     <td colspan="1" class="realized-percentage"></td>
                     <td colspan="1" class="percentage-value"></td>
@@ -559,7 +638,7 @@
             }
         }
 
-        async function downloadCSV() {
+        async function generateCSVContent() {
             const startAge = parseInt(inputs.ageNow.value);
             const endAge = parseInt(inputs.ageRetirement.value);
             const years = endAge - startAge;
@@ -568,7 +647,29 @@
             const rate = findInterestRate();
             const initialNestEgg = currentNestEgg;
 
-            let csvContent = "Year,Age,Nest-Egg Start,Yearly Addition,Nest-Egg Target,Nest-Egg Realized,% Realized,Realized vs Target (%)\n";
+            // Initialize CSV content
+            let csvContent = "";
+
+            // Today Section
+            csvContent += "TODAY\n";
+            csvContent += "Field,Value\n";
+            csvContent += `Nest-Egg Now,${parseFormattedNumber(inputs.nestEggNow.value)}\n`;
+            csvContent += `Your Age Now,${inputs.ageNow.value}\n`;
+            csvContent += `Yearly Addition,${parseFormattedNumber(inputs.yearlyAddition.value)}\n`;
+            csvContent += "\n";
+
+            // Retirement Section
+            csvContent += "RETIREMENT\n";
+            csvContent += "Field,Value\n";
+            csvContent += `Nest-Egg at Retirement,${parseFormattedNumber(inputs.nestEggRetirement.value)}\n`;
+            csvContent += `Your Age at Retirement,${inputs.ageRetirement.value}\n`;
+            csvContent += `Years to Compound,${yearsToCompound.textContent}\n`;
+            csvContent += `Yearly Interest Rate,${interestRate.textContent}\n`;
+            csvContent += "\n";
+
+            // Year-by-Year Breakdown
+            csvContent += "YEAR-BY-YEAR BREAKDOWN\n";
+            csvContent += "Year,Age,Nest-Egg Start,Yearly Addition,Nest-Egg Target,% Target,Nest-Egg Realized,% Realized,Realized vs Target (%)\n";
             const rows = yearlyBreakdown.querySelectorAll('tr');
 
             for (let i = 0; i < years; i++) {
@@ -576,6 +677,7 @@
                 const age = startAge + i;
                 const nestEggStart = currentNestEgg;
                 const nestEggTarget = nestEggStart * (1 + rate) + addition;
+                const targetPercentage = nestEggStart !== 0 ? (((nestEggTarget / nestEggStart) - 1) * 100).toFixed(2) : '';
                 const realizedInput = rows[i]?.querySelector('.realized-nest-egg')?.value || '';
                 const realizedValue = realizedInput ? parseFormattedNumber(realizedInput) : '';
                 let realizedPercentage = '';
@@ -594,19 +696,187 @@
                 }
                 const percentage = (realizedValue && nestEggTarget) ? (((realizedValue - nestEggTarget) / nestEggTarget) * 100).toFixed(2) : '';
 
-                csvContent += `${year},${age},${nestEggStart},${addition},${nestEggTarget},${realizedValue},${realizedPercentage ? realizedPercentage.toFixed(2) : ''},${percentage}\n`;
+                csvContent += `${year},${age},${nestEggStart},${addition},${nestEggTarget},${targetPercentage},${realizedValue},${realizedPercentage ? realizedPercentage.toFixed(2) : ''},${percentage}\n`;
                 currentNestEgg = nestEggTarget;
             }
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", "yearly_breakdown.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            return csvContent;
+        }
+
+        async function initiateDownload() {
+            try {
+                const csvContent = await generateCSVContent();
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+                console.log('showSaveFilePicker available:', !!window.showSaveFilePicker);
+
+                // Try using showSaveFilePicker for modern browsers
+                if (window.showSaveFilePicker) {
+                    const fileHandle = await window.showSaveFilePicker({
+                        suggestedName: 'compound_interest_data.csv',
+                        types: [{
+                            description: 'CSV Files',
+                            accept: { 'text/csv': ['.csv'] }
+                        }]
+                    });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                } else {
+                    // Fallback for browsers that don't support showSaveFilePicker
+                    alert('Your browser does not support choosing a save location. The file will be downloaded to your default downloads folder.');
+                    const link = document.createElement("a");
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", "compound_interest_data.csv");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
+            } catch (error) {
+                console.error('Download failed:', error);
+                // Fallback to basic download if there's an error
+                alert('An error occurred while trying to save the file. The file will be downloaded to your default downloads folder.');
+                const csvContent = await generateCSVContent();
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "compound_interest_data.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // File Upload Handling
+        document.getElementById('uploadFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) {
+                uploadedFileContent = null;
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedFileContent = event.target.result;
+            };
+            reader.onerror = function() {
+                alert('Error reading the file.');
+                uploadedFileContent = null;
+            };
+            reader.readAsText(file);
+        });
+
+        function processUploadedFile() {
+            if (!uploadedFileContent) {
+                alert('Please upload a CSV file first.');
+                return;
+            }
+
+            try {
+                // Reset realizedValues to avoid stale data
+                realizedValues = [];
+
+                // Parse CSV content
+                const lines = uploadedFileContent.split('\n').map(line => line.trim()).filter(line => line);
+                let currentSection = '';
+                const todayData = {};
+                const retirementData = {};
+                const breakdownData = [];
+
+                // Parse CSV with robust section handling
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (line === 'TODAY') {
+                        currentSection = 'TODAY';
+                        i++; // Skip to "Field,Value" if present
+                        if (lines[i]?.startsWith('Field,Value')) i++;
+                        while (i < lines.length && lines[i] && lines[i] !== 'RETIREMENT') {
+                            const parts = lines[i].split(',').map(item => item.trim());
+                            if (parts.length >= 2) {
+                                const key = parts[0];
+                                const value = parts.slice(1).join(',').trim(); // Handle commas in values
+                                if (key && value !== undefined) {
+                                    todayData[key] = value;
+                                }
+                            }
+                            i++;
+                        }
+                        i--; // Adjust for loop increment
+                    } else if (line === 'RETIREMENT') {
+                        currentSection = 'RETIREMENT';
+                        i++; // Skip to "Field,Value" if present
+                        if (lines[i]?.startsWith('Field,Value')) i++;
+                        while (i < lines.length && lines[i] && lines[i] !== 'YEAR-BY-YEAR BREAKDOWN') {
+                            const parts = lines[i].split(',').map(item => item.trim());
+                            if (parts.length >= 2) {
+                                const key = parts[0];
+                                const value = parts.slice(1).join(',').trim(); // Handle commas in values
+                                if (key && value !== undefined) {
+                                    retirementData[key] = value;
+                                }
+                            }
+                            i++;
+                        }
+                        i--; // Adjust for loop increment
+                    } else if (line === 'YEAR-BY-YEAR BREAKDOWN') {
+                        currentSection = 'BREAKDOWN';
+                        i++; // Skip to header
+                        if (lines[i]?.startsWith('Year,Age,Nest-Egg Start')) i++;
+                        while (i < lines.length && lines[i]) {
+                            const row = lines[i].split(',').map(item => item.trim());
+                            if (row.length >= 7) { // Ensure row has enough columns for Nest-Egg Realized
+                                breakdownData.push(row);
+                            }
+                            i++;
+                        }
+                        i--; // Adjust for loop increment
+                    }
+                }
+
+                // Update Today fields
+                if (todayData['Nest-Egg Now'] !== undefined) {
+                    const value = parseFloat(todayData['Nest-Egg Now']);
+                    inputs.nestEggNow.value = isNaN(value) ? '' : formatNumber(value);
+                }
+                if (todayData['Your Age Now'] !== undefined) {
+                    const value = parseInt(todayData['Your Age Now']);
+                    inputs.ageNow.value = isNaN(value) ? '' : value;
+                }
+                if (todayData['Yearly Addition'] !== undefined) {
+                    const value = parseFloat(todayData['Yearly Addition']);
+                    inputs.yearlyAddition.value = isNaN(value) ? '' : formatNumber(value);
+                }
+
+                // Update Retirement fields
+                if (retirementData['Nest-Egg at Retirement'] !== undefined) {
+                    const value = parseFloat(retirementData['Nest-Egg at Retirement']);
+                    inputs.nestEggRetirement.value = isNaN(value) ? '' : formatNumber(value);
+                }
+                if (retirementData['Your Age at Retirement'] !== undefined) {
+                    const value = parseInt(retirementData['Your Age at Retirement']);
+                    inputs.ageRetirement.value = isNaN(value) ? '' : value;
+                }
+
+                // Update realizedValues for Year-by-Year Breakdown
+                realizedValues = breakdownData.map(row => {
+                    const realizedValue = row[6]; // Nest-Egg Realized is 7th column (index 6)
+                    if (realizedValue && realizedValue !== '') {
+                        const value = parseFloat(realizedValue);
+                        return isNaN(value) ? '' : formatNumber(value);
+                    }
+                    return '';
+                });
+
+                // Trigger recalculation to update table and chart
+                updateCalculation();
+            } catch (error) {
+                console.error('Error processing CSV:', error);
+                alert('Error processing the uploaded CSV file. Please ensure it matches the expected format.');
+            }
         }
 
         function updateCalculation() {
